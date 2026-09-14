@@ -131,7 +131,7 @@
     <div class="controls-group">
       <div class="filter-group">
         <label for="mesFilter" style="color:white; margin-right:8px;">Mes:</label>
-        <select id="mesFilter">
+        <select id="mesFilter" onchange="cargarDatos()">
           <option value="TODOS">Todos los Meses</option>
           <option value="Enero">Enero</option>
           <option value="Febrero">Febrero</option>
@@ -170,7 +170,7 @@
     <div class="card light-purple">
       <div class="card-title">% Ausentismo Real</div>
       <div class="card-value" id="kpiPorcentaje">0%</div>
-      <span id="badgeSemaforo" class="badge badge-success">Sin Datos</span>
+      <span id="badgeSemaforo" class="badge badge-success">Esperando datos</span>
     </div>
 
     <div class="card">
@@ -192,7 +192,7 @@
       <div style="font-size: 0.9rem; line-height: 1.8;">
         <p><strong>Objetivo Mensual:</strong> 2.0%</p>
         <p><strong>Desviación vs Obj:</strong> <span id="txtDesvObj">0%</span></p>
-        <p><strong>Estado:</strong> <span id="txtEstadoTexto" style="font-weight: bold;">Esperando actualización...</span></p>
+        <p><strong>Estado:</strong> <span id="txtEstadoTexto" style="font-weight: bold;">Cargando...</span></p>
       </div>
     </div>
   </div>
@@ -212,13 +212,12 @@
         </tr>
       </thead>
       <tbody id="tablaPDA">
-        <tr><td colspan="6" style="text-align:center;">Presione "Actualizar Ahora" para cargar registros PDA.</td></tr>
+        <tr><td colspan="6" style="text-align:center;">Cargando registros...</td></tr>
       </tbody>
     </table>
   </div>
 
   <script>
-    // URL desplegada del ejecutable de Google Apps Script:
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbymn0QQ7a_fuw9O-AMy5lKY0R8nLQo7w8blgSALcV250BWhasgP-pyT5OyBnruh1Dn7Pw/exec";
 
     let chartInstance = null;
@@ -244,9 +243,8 @@
 
       setEstadoCargando(true);
 
-      // Timeout límite de 10 segundos para no bloquear la interfaz
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       try {
         const response = await fetch(url, { signal: controller.signal });
@@ -261,13 +259,14 @@
         const txtEstado = document.getElementById('txtEstadoTexto');
         
         if (err.name === 'AbortError') {
-          alert("La consulta tardó demasiado tiempo en responder (Timeout). Revisa el script de Apps Script.");
-          txtEstado.innerText = "Error: Tiempo agotado";
+          txtEstado.innerText = "Tiempo agotado al conectar";
         } else {
-          alert("Ocurrió un error al conectar con Google Apps Script. Revisa los permisos o la consola.");
-          txtEstado.innerText = "Error de conexión";
+          txtEstado.innerText = "Error de conexión con Apps Script";
         }
         txtEstado.style.color = "var(--color-danger)";
+        
+        document.getElementById('tablaPDA').innerHTML = 
+          '<tr><td colspan="6" style="text-align:center; color: red;">No se pudieron obtener los datos. Compruebe los permisos del despliegue en Google Apps Script ("Cualquiera" / "Anyone").</td></tr>';
       } finally {
         setEstadoCargando(false);
       }
@@ -296,14 +295,11 @@
         txtEstadoTexto.style.color = "var(--color-success)";
       }
 
-      // Comparativa 2025 vs 2026
       document.getElementById('kpiCompAnual').innerText = `${data.pct2025 ?? 0}% vs ${data.pct2026 ?? 0}%`;
       document.getElementById('txtDesviacionAnual').innerText = `Diferencia 2025-2026: ${(data.desviacionAnual > 0 ? '+' : '')}${data.desviacionAnual ?? 0}%`;
 
-      // Render Chart por Área
       if (data.porArea) renderChart(data.porArea);
 
-      // Render Tabla PDA
       const tbody = document.getElementById('tablaPDA');
       tbody.innerHTML = '';
       if (!data.pda || data.pda.length === 0) {
@@ -348,6 +344,9 @@
         }
       });
     }
+
+    // Iniciar la primera carga de datos al abrir
+    window.onload = cargarDatos;
   </script>
 </body>
 </html>

@@ -218,8 +218,8 @@
   </div>
 
   <script>
-    // Reemplazar por la URL válida de la Web App de Apps Script:
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/TU_SCRIPT_ID_AQUI/exec";
+    // URL desplegada del ejecutable de Google Apps Script:
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbymn0QQ7a_fuw9O-AMy5lKY0R8nLQo7w8blgSALcV250BWhasgP-pyT5OyBnruh1Dn7Pw/exec";
 
     let chartInstance = null;
 
@@ -239,17 +239,12 @@
     }
 
     async function cargarDatos() {
-      if (APPS_SCRIPT_URL.includes("TU_SCRIPT_ID_AQUI")) {
-        alert("Atención: Debes configurar la URL válida de Google Apps Script en la variable APPS_SCRIPT_URL.");
-        return;
-      }
-
       const mes = document.getElementById('mesFilter').value;
       const url = `${APPS_SCRIPT_URL}?mes=${encodeURIComponent(mes)}`;
 
       setEstadoCargando(true);
 
-      // Controlador de Timeout (10 segundos máximo)
+      // Timeout límite de 10 segundos para no bloquear la interfaz
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -266,10 +261,10 @@
         const txtEstado = document.getElementById('txtEstadoTexto');
         
         if (err.name === 'AbortError') {
-          alert("La consulta tardó demasiado tiempo en responder (Timeout). Verifique la URL de Apps Script.");
+          alert("La consulta tardó demasiado tiempo en responder (Timeout). Revisa el script de Apps Script.");
           txtEstado.innerText = "Error: Tiempo agotado";
         } else {
-          alert("Ocurrió un error al conectar con Google Apps Script. Verifique la consola o la URL.");
+          alert("Ocurrió un error al conectar con Google Apps Script. Revisa los permisos o la consola.");
           txtEstado.innerText = "Error de conexión";
         }
         txtEstado.style.color = "var(--color-danger)";

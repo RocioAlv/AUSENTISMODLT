@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard de Ausentismo DLT</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -29,10 +30,18 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
       box-shadow: 0 4px 12px rgba(4, 36, 64, 0.15);
     }
 
     header h1 { font-size: 1.5rem; color: var(--color-light-blue); }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
     .filter-group select {
       padding: 8px 16px;
@@ -43,6 +52,23 @@
       font-weight: bold;
       cursor: pointer;
     }
+
+    .btn-update {
+      background-color: var(--color-primary-blue);
+      color: white;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s ease, opacity 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-update:hover { background-color: #3b6a98; }
+    .btn-update:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .grid-kpi {
       display: grid;
@@ -102,23 +128,28 @@
 
   <header>
     <h1>Indicador de Ausentismo</h1>
-    <div class="filter-group">
-      <label for="mesFilter" style="color:white; margin-right:8px;">Mes:</label>
-      <select id="mesFilter" onchange="cargarDatos()">
-        <option value="TODOS">Todos los Meses</option>
-        <option value="Enero">Enero</option>
-        <option value="Febrero">Febrero</option>
-        <option value="Marzo">Marzo</option>
-        <option value="Abril">Abril</option>
-        <option value="Mayo">Mayo</option>
-        <option value="Junio">Junio</option>
-        <option value="Julio">Julio</option>
-        <option value="Agosto" selected>Agosto</option>
-        <option value="Septiembre">Septiembre</option>
-        <option value="Octubre">Octubre</option>
-        <option value="Noviembre">Noviembre</option>
-        <option value="Diciembre">Diciembre</option>
-      </select>
+    <div class="controls-group">
+      <div class="filter-group">
+        <label for="mesFilter" style="color:white; margin-right:8px;">Mes:</label>
+        <select id="mesFilter">
+          <option value="TODOS">Todos los Meses</option>
+          <option value="Enero">Enero</option>
+          <option value="Febrero">Febrero</option>
+          <option value="Marzo">Marzo</option>
+          <option value="Abril">Abril</option>
+          <option value="Mayo">Mayo</option>
+          <option value="Junio">Junio</option>
+          <option value="Julio">Julio</option>
+          <option value="Agosto" selected>Agosto</option>
+          <option value="Septiembre">Septiembre</option>
+          <option value="Octubre">Octubre</option>
+          <option value="Noviembre">Noviembre</option>
+          <option value="Diciembre">Diciembre</option>
+        </select>
+      </div>
+      <button id="btnFetch" class="btn-update" onclick="cargarDatos()">
+        <span>🔄</span> Actualizar Ahora
+      </button>
     </div>
   </header>
 
@@ -126,20 +157,20 @@
   <div class="grid-kpi">
     <div class="card">
       <div class="card-title">Días Ausentismo (2026)</div>
-      <div class="card-value" id="kpiAusentismo">0</div>
+      <div class="card-value" id="kpiAusentismo">-</div>
       <span style="font-size: 0.8rem; color:#888;">Clasificación: AUSENTISMO</span>
     </div>
 
     <div class="card purple">
       <div class="card-title">Otros Motivos</div>
-      <div class="card-value" id="kpiOtrosMotivos">0</div>
+      <div class="card-value" id="kpiOtrosMotivos">-</div>
       <span style="font-size: 0.8rem; color:#888;">Clasificación: NO CORRESPONDE</span>
     </div>
 
     <div class="card light-purple">
       <div class="card-title">% Ausentismo Real</div>
       <div class="card-value" id="kpiPorcentaje">0%</div>
-      <span id="badgeSemaforo" class="badge badge-success">En Objetivo</span>
+      <span id="badgeSemaforo" class="badge badge-success">Sin Datos</span>
     </div>
 
     <div class="card">
@@ -161,7 +192,7 @@
       <div style="font-size: 0.9rem; line-height: 1.8;">
         <p><strong>Objetivo Mensual:</strong> 2.0%</p>
         <p><strong>Desviación vs Obj:</strong> <span id="txtDesvObj">0%</span></p>
-        <p><strong>Estado:</strong> <span id="txtEstadoTexto" style="font-weight: bold;">Cargando...</span></p>
+        <p><strong>Estado:</strong> <span id="txtEstadoTexto" style="font-weight: bold;">Esperando actualización...</span></p>
       </div>
     </div>
   </div>
@@ -181,39 +212,82 @@
         </tr>
       </thead>
       <tbody id="tablaPDA">
-        <tr><td colspan="6" style="text-align:center;">Cargando registros PDA...</td></tr>
+        <tr><td colspan="6" style="text-align:center;">Presione "Actualizar Ahora" para cargar registros PDA.</td></tr>
       </tbody>
     </table>
   </div>
 
   <script>
-    // Coloca la URL de despliegue de tu Apps Script aquí:
+    // Reemplazar por la URL válida de la Web App de Apps Script:
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/TU_SCRIPT_ID_AQUI/exec";
 
     let chartInstance = null;
 
-    function cargarDatos() {
+    function setEstadoCargando(cargando) {
+      const btn = document.getElementById('btnFetch');
+      const txtEstado = document.getElementById('txtEstadoTexto');
+      
+      if (cargando) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Cargando...';
+        txtEstado.innerText = "Consultando datos...";
+        txtEstado.style.color = "var(--color-primary-blue)";
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔄</span> Actualizar Ahora';
+      }
+    }
+
+    async function cargarDatos() {
+      if (APPS_SCRIPT_URL.includes("TU_SCRIPT_ID_AQUI")) {
+        alert("Atención: Debes configurar la URL válida de Google Apps Script en la variable APPS_SCRIPT_URL.");
+        return;
+      }
+
       const mes = document.getElementById('mesFilter').value;
       const url = `${APPS_SCRIPT_URL}?mes=${encodeURIComponent(mes)}`;
 
-      fetch(url)
-        .then(response => response.json())
-        .then(data => renderDashboard(data))
-        .catch(err => {
-          console.error("Error al obtener datos:", err);
-        });
+      setEstadoCargando(true);
+
+      // Controlador de Timeout (10 segundos máximo)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
+        const data = await response.json();
+        renderDashboard(data);
+      } catch (err) {
+        console.error("Error al obtener datos:", err);
+        const txtEstado = document.getElementById('txtEstadoTexto');
+        
+        if (err.name === 'AbortError') {
+          alert("La consulta tardó demasiado tiempo en responder (Timeout). Verifique la URL de Apps Script.");
+          txtEstado.innerText = "Error: Tiempo agotado";
+        } else {
+          alert("Ocurrió un error al conectar con Google Apps Script. Verifique la consola o la URL.");
+          txtEstado.innerText = "Error de conexión";
+        }
+        txtEstado.style.color = "var(--color-danger)";
+      } finally {
+        setEstadoCargando(false);
+      }
     }
 
     function renderDashboard(data) {
-      document.getElementById('kpiAusentismo').innerText = data.ausentismo2026;
-      document.getElementById('kpiOtrosMotivos').innerText = data.otrosMotivos2026;
-      document.getElementById('kpiPorcentaje').innerText = data.pct2026 + "%";
+      document.getElementById('kpiAusentismo').innerText = data.ausentismo2026 ?? 0;
+      document.getElementById('kpiOtrosMotivos').innerText = data.otrosMotivos2026 ?? 0;
+      document.getElementById('kpiPorcentaje').innerText = (data.pct2026 ?? 0) + "%";
 
       const badge = document.getElementById('badgeSemaforo');
       const txtDesvObj = document.getElementById('txtDesvObj');
       const txtEstadoTexto = document.getElementById('txtEstadoTexto');
 
-      txtDesvObj.innerText = (data.desviacionObjetivo > 0 ? "+" : "") + data.desviacionObjetivo + "%";
+      txtDesvObj.innerText = (data.desviacionObjetivo > 0 ? "+" : "") + (data.desviacionObjetivo ?? 0) + "%";
 
       if (parseFloat(data.pct2026) > 2.0) {
         badge.innerText = "Supera Objetivo (> 2%)";
@@ -228,27 +302,27 @@
       }
 
       // Comparativa 2025 vs 2026
-      document.getElementById('kpiCompAnual').innerText = `${data.pct2025}% vs ${data.pct2026}%`;
-      document.getElementById('txtDesviacionAnual').innerText = `Diferencia 2025-2026: ${(data.desviacionAnual > 0 ? '+' : '')}${data.desviacionAnual}%`;
+      document.getElementById('kpiCompAnual').innerText = `${data.pct2025 ?? 0}% vs ${data.pct2026 ?? 0}%`;
+      document.getElementById('txtDesviacionAnual').innerText = `Diferencia 2025-2026: ${(data.desviacionAnual > 0 ? '+' : '')}${data.desviacionAnual ?? 0}%`;
 
       // Render Chart por Área
-      renderChart(data.porArea);
+      if (data.porArea) renderChart(data.porArea);
 
       // Render Tabla PDA
       const tbody = document.getElementById('tablaPDA');
       tbody.innerHTML = '';
       if (!data.pda || data.pda.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No se encontraron registros PDA.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No se encontraron registros PDA para este filtro.</td></tr>';
       } else {
         data.pda.forEach(item => {
           tbody.innerHTML += `
             <tr>
-              <td>${item.mes}</td>
-              <td>${item.empleado}</td>
-              <td>${item.accion}</td>
-              <td>${item.area}</td>
-              <td>${item.responsable}</td>
-              <td><span class="badge" style="background-color: var(--color-purple-blue);">${item.estado}</span></td>
+              <td>${item.mes ?? '-'}</td>
+              <td>${item.empleado ?? '-'}</td>
+              <td>${item.accion ?? '-'}</td>
+              <td>${item.area ?? '-'}</td>
+              <td>${item.responsable ?? '-'}</td>
+              <td><span class="badge" style="background-color: var(--color-purple-blue);">${item.estado ?? '-'}</span></td>
             </tr>
           `;
         });
@@ -279,8 +353,6 @@
         }
       });
     }
-
-    window.onload = cargarDatos;
   </script>
 </body>
 </html>
